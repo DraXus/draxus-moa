@@ -24,11 +24,18 @@ import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 
 import javax.swing.JButton;
+import javax.swing.JFileChooser;
 import javax.swing.JFrame;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
@@ -62,6 +69,8 @@ public class TaskManagerPanel extends JPanel {
     private static final long serialVersionUID = 1L;
 
     public static final int MILLISECS_BETWEEN_REFRESH = 600;
+    
+    public static String exportFileExtension = "log";
 
     public class ProgressCellRenderer extends JProgressBar implements
             TableCellRenderer {
@@ -188,6 +197,10 @@ public class TaskManagerPanel extends JPanel {
     protected JButton cancelTaskButton = new JButton("Cancel");
 
     protected JButton deleteTaskButton = new JButton("Delete");
+    
+    protected JButton saveLogButton = new JButton("Save Log");
+    
+    protected JButton setTaskButton = new JButton("Set task manually");
 
     protected PreviewPanel previewPanel;
 
@@ -214,6 +227,8 @@ public class TaskManagerPanel extends JPanel {
         controlPanel.add(this.resumeTaskButton);
         controlPanel.add(this.cancelTaskButton);
         controlPanel.add(this.deleteTaskButton);
+        controlPanel.add(this.saveLogButton);
+        controlPanel.add(this.setTaskButton);
         setLayout(new BorderLayout());
         add(configPanel, BorderLayout.NORTH);
         add(new JScrollPane(this.taskTable), BorderLayout.CENTER);
@@ -269,6 +284,23 @@ public class TaskManagerPanel extends JPanel {
             @Override
             public void actionPerformed(ActionEvent arg0) {
                 deleteSelectedTasks();
+            }
+        });
+        this.saveLogButton.addActionListener(new ActionListener() {
+        	
+            @Override
+            public void actionPerformed(ActionEvent arg0) {
+                saveLogSelectedTasks();
+             }
+         });
+        this.setTaskButton.addActionListener(new ActionListener() {
+        	
+            @Override
+            public void actionPerformed(ActionEvent arg0) {
+            	String newTaskString = JOptionPane.showInputDialog("Insert command line");
+            	if (newTaskString!=null){
+            		setTaskString(newTaskString);
+            	}
             }
         });
         javax.swing.Timer updateListTimer = new javax.swing.Timer(
@@ -355,6 +387,37 @@ public class TaskManagerPanel extends JPanel {
         }
         this.taskTableModel.fireTableDataChanged();
     }
+    
+	public void saveLogSelectedTasks() {
+	    	String tasksLog = "";
+	        TaskThread[] selectedTasks = getSelectedTasks();
+	        for (TaskThread thread : selectedTasks) {
+	        	tasksLog += ((OptionHandler) thread.getTask()).getCLICreationString(MainTask.class) + "\n";
+	        }
+	        
+	        JFileChooser fileChooser = new JFileChooser();
+	        fileChooser.setAcceptAllFileFilterUsed(true);
+	        fileChooser.addChoosableFileFilter(new FileExtensionFilter(
+	                exportFileExtension));
+	        if (fileChooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+	            File chosenFile = fileChooser.getSelectedFile();
+	            String fileName = chosenFile.getPath();
+	            if (!chosenFile.exists()
+	                    && !fileName.endsWith(exportFileExtension)) {
+	                fileName = fileName + "." + exportFileExtension;
+	            }
+	            try {
+	                PrintWriter out = new PrintWriter(new BufferedWriter(
+	                        new FileWriter(fileName)));
+	                out.write(tasksLog);
+	                out.close();
+	            } catch (IOException ioe) {
+	                GUIUtils.showExceptionDialog(
+	                        this.saveLogButton,
+	                        "Problem saving file " + fileName, ioe);
+	            }
+	        }
+	    }
 
     private static void createAndShowGUI() {
 
